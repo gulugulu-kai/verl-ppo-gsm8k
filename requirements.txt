@@ -1,0 +1,72 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# 本项目所需 Python 包
+#
+# 版本为 2026-09 在单张 RTX 4090 + Python 3.12 + CUDA 13.0 的实例上**实测跑通**的组合。
+# 这套栈耦合很紧（vLLM 会锁定 torch 版本），请尽量按下面的顺序安装：
+#
+#     pip install -r requirements.txt
+#     pip install -e /path/to/verl          # ← 最后装 verl（见文末说明）
+#
+# 或直接运行 scripts/setup_env.sh（它会装依赖 + 打兼容补丁，幂等）。
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── 推理与评测（vLLM 做 rollout 与离线评测）──────────────────────────────────
+# 注意：装上它会自动带来匹配的 torch / torchvision / torchaudio / triton
+#（本环境实测 torch 2.13.0+cu130、torchvision 0.28.0、torchaudio 2.11.0、triton 3.7.1）
+# 因此**不要**在这里手工写 torch==...+cu130，PyPI 上找不到带 +cu130 后缀的包。
+vllm==0.30.0
+
+# ── 模型与数据 ───────────────────────────────────────────────────────────────
+transformers==5.12.1
+datasets==5.0.1
+safetensors==0.8.0
+tokenizers==0.22.2
+
+# ── 训练（PPO）运行时 ────────────────────────────────────────────────────────
+# verl 自身的 setup.py 已声明它的大部分依赖（hydra-core / omegaconf / tensordict /
+# codetiming / dill / pyarrow 等），用 `pip install -e .` 会自动装齐。
+# 这里只列需要与上面版本对齐、或它漏声明的关键包：
+ray==2.58.0
+accelerate==1.15.0
+peft==0.21.0
+torchdata==0.11.0
+liger-kernel==0.8.3
+cachetools==7.2.0          # verl 的 rollout/router.py 用到，但未在依赖里声明
+packaging==25.0            # 同上，verl/__init__.py 启动即需要
+
+# ── 评测判分 ─────────────────────────────────────────────────────────────────
+# eval_gsm8k.py 复用 verl 的 GSM8K 判分函数，其内部依赖这两个（缺失会判分失败）
+math-verify==0.9.0
+latex2sympy2_extended==1.11.0
+sympy==1.14.0
+
+# ── 数据处理 ─────────────────────────────────────────────────────────────────
+pandas==3.0.6
+numpy==2.3.5
+
+# ── 实验记录（trainer.logger=swanlab）────────────────────────────────────────
+# 只用控制台日志的话可以去掉；SWANLAB_MODE=local 时只写本地目录
+swanlab==0.10.1
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 关于 verl
+#
+# 本项目基于一个**改过的 verl fork**（带 transfer_queue 集成），
+# git 版本为 v0.8.0-465-g6093e007、`verl.__version__ == 0.10.0.dev`，
+# 不在 PyPI 上，需要源码安装：
+#
+#     git clone <你的 verl fork>  /root/verl
+#     cd /root/verl && pip install -e .
+#
+# 上游官方 verl（https://github.com/volcengine/verl）在相近版本上应当也能用，
+# 但本项目依赖以下三点，需要自行核对：
+#   1) rollout 注册表里必须有 vllm 的 async 实现（该版本已移除 hf/sync）；
+#   2) 需要打 3 处兼容补丁（见 scripts/setup_env.sh：flash_attention_2 → sdpa、
+#      trl 缺失保护、模型 config 的默认 attn 实现）；
+#   3) 需要 `verl.utils.reward_score.gsm8k.compute_score` 可用。
+#
+# 另外：**不需要装 trl**。该 fork 的 critic 走 Qwen2ForTokenClassification 路径，
+# 而 scripts/setup_env.sh 里的补丁会让代码容忍 trl 缺少
+# AutoModelForCausalLMWithValueHead（trl ≥ 1.x 已删除该类）。
+# 如果你的 verl 未打该补丁，则需自备一个仍带此类的旧版 trl（例如 0.1x）。
+# ─────────────────────────────────────────────────────────────────────────────

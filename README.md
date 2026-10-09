@@ -85,7 +85,12 @@ actor/ppo_kl:   ~2.5e-4    每步策略几乎不再移动
 ## 快速开始
 
 ```bash
-# 1) 环境准备（依赖修复 + 兼容补丁，幂等）
+# 0) 依赖：Python 3.12 + requirements.txt 里锁定的版本组合
+pip install -r requirements.txt
+#    verl 不在 PyPI 上，需源码安装（见 requirements.txt 末尾说明）
+cd /path/to/verl && pip install -e . && cd -
+
+# 1) 环境准备（补依赖 + 打 3 处兼容补丁，幂等）
 bash scripts/setup_env.sh
 
 # 2) 训练（参数 = 总 epoch 数；续训沿用同一 EXPERIMENT 会自动接着跑）
@@ -95,12 +100,16 @@ bash scripts/run_ppo.sh 1
 bash scripts/finish_and_eval.sh 29
 ```
 
+> 依赖清单见 [`requirements.txt`](requirements.txt)：版本是实测跑通的组合，
+> 其中 **vLLM 会锁定 torch 版本**，所以务必先装它、且不要手工写 `torch==...+cu130`。
+
 ---
 
 ## 项目结构
 
 ```
 .
+├── requirements.txt             # 依赖清单（实测跑通的版本组合）
 ├── eval_gsm8k.py                # 评测脚本（双口径，用 vLLM 批量推理）
 ├── compare_evals.py             # 多 run 对比：置信区间 + 精确 McNemar 配对检验
 └── scripts/

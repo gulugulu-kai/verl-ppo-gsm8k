@@ -1,0 +1,22 @@
+# 训练/评测产物（体积大，不入库）
+checkpoints/
+swanlog/
+wandb/
+*.jsonl
+*.log
+
+# 模型权重
+*.pt
+*.safetensors
+*.bin
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# 本机/凭证（切勿提交）
+_ap.cmd
+.env
+*.pem
